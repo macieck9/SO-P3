@@ -6,3 +6,7 @@ Funkcje:
  - void thread\_exit() - kończy wątek
  - void sem\_wait(sem\_t)  - blokuje semafor
  - void sem\_signal(sem\_t) - odblokowuje semafor
+ 
+ Typy:
+ - thread\_t - wątek
+ - sem\_t - semafor
