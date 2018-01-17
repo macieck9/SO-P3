@@ -17,7 +17,7 @@ int next_id = 0;
 
 // korzystamy z timerów, a nie ualarm, bo wg mana to jest bezpieczniejsze.
 
-const struct itimerval timer_interv = {{0,0}, {0,1}};
+const struct itimerval timer_interv = {{0,0}, {0,10}};
 const struct itimerval timer_zero = {{0,0}, {0,0}};
 
 void timer_off() {
@@ -56,7 +56,6 @@ ucontext_t main_cont;
 
 void schedule()
 {
-	//cnt--;
 	timer_off();
 	printf("Schedule: %d : timer off\n", threads->thread.id);
 	struct thread_list* curr = threads;
@@ -65,24 +64,16 @@ void schedule()
 	{
 	    threads = threads->next;
 	}
-	//timer_on();
 	//printf("%lu\n", (unsigned long int)(&threads->thread.context));
 	printf("Schedule: %d : timer on\n", threads->thread.id);
 	printf("Schedule: %d : swapping context\n", threads->thread.id);
-    swapcontext(&curr->thread.context, &threads->thread.context);
-    /*
-    dopóki kontekst zmienia się tym swapem, ustawianie timera po nim jest sensowne,
-    jednak czasem zmienia się go na świeżutki z thread_create. Co właściwie się
-    wtedy dzieje? Wtedy wywołuje się fcja wskazana w makecontext. Więc nie
-    włącza się timer?
-    */
+	printf("%ld\n", *(long*)(&threads->thread.context));
 	timer_on();
-	
+    swapcontext(&curr->thread.context, &threads->thread.context);	
 }
 
 void aaa()
 {
-	/// ??? jeśli ani razu nie wywoła się aaa, jest fpe przy exicie.
 	timer_off();
 	printf("AAA\n");
 	schedule();
@@ -92,15 +83,15 @@ int thread_create(void (*func)())
 {
 	timer_off();
 	printf("Thread_create: %d : timer off\n", threads->thread.id);
-    ucontext_t cont;
-    getcontext(&cont);
-    cont.uc_link = 0;
-    cont.uc_stack.ss_sp = malloc(SIGSTKSZ);
-    cont.uc_stack.ss_size=SIGSTKSZ;
-    cont.uc_stack.ss_flags=0;
-    makecontext(&cont, func, 0);
+    ucontext_t *cont = malloc(sizeof(ucontext_t));
+    getcontext(cont);
+    cont->uc_link = 0;
+    cont->uc_stack.ss_sp = malloc(SIGSTKSZ);
+    cont->uc_stack.ss_size=SIGSTKSZ;
+    cont->uc_stack.ss_flags=0;
+    makecontext(cont, func, 0);
     struct thread_t *thread = malloc(sizeof(struct thread_t));
-    thread->context = cont;
+    thread->context = *cont;
     thread->id = next_id++;
     thread->wait = -1;
     thread->sem = 0;
@@ -112,14 +103,12 @@ int thread_create(void (*func)())
     new_thread->prev->next = new_thread;
     printf("Thread_create: %d : timer on\n", threads->thread.id);
     timer_on();
-    //printf("%d\n", thread.id);
     //printf("%ld\n", *((long*)(&threads->thread.context)));
     return thread->id;
 }
 
 void thread_exit()
 {
-	//printf("Exit %d\n", threads->thread.id);
 	timer_off();
 	printf("Thread_exit: %d : timer off\n", threads->thread.id);
 	int curr_id = threads->thread.id;
@@ -135,6 +124,7 @@ void thread_exit()
 	threads->next->prev = threads->prev;
 	threads = threads->next;
 	printf("Thread_exit: %d : setting context\n", threads->thread.id);
+	//printf("%d\n", *((int*)(&threads->thread.context)));
 	struct thread_list* tmp = threads;
 	do
 	{
@@ -144,8 +134,6 @@ void thread_exit()
 	while (tmp->thread.id != threads->thread.id);
 	timer_on();
 	setcontext(&threads->thread.context);
-	//printf("Exit2 %d\n", threads->thread.id);
-	//printf("Thread_exit: %d : schedule\n", threads->thread.id);
 }
 
 void thread_join(int id)
@@ -228,18 +216,12 @@ void init()
 	threads->thread.wait = -1;
 	threads->thread.sem = 0;
 	threads->next = threads->prev = threads;
-	//printf("Init\n");
 	signal(SIGVTALRM, aaa);
-	//ucontext_t cont;
     getcontext(&main_cont);
     main_cont.uc_link = 0;
 	main_cont.uc_stack.ss_sp = malloc(SIGSTKSZ);
 	main_cont.uc_stack.ss_size=SIGSTKSZ;
 	main_cont.uc_stack.ss_flags=0;
-    //cont.uc_link = 0;
-    //cont.uc_stack.ss_sp = malloc(SIGSTKSZ);
-    //cont.uc_stack.ss_size=SIGSTKSZ;
-    //cont.uc_stack.ss_flags=0;
 	threads->thread.context=main_cont;
 	printf("Init: %d : timer on\n", threads->thread.id);
 	timer_on();
@@ -248,14 +230,13 @@ void init()
 void f1()
 {
 	printf("f1\n");
+	sem_wait(&sem);
 	for (int i = 0; i < 1000000; i++)
 	{
-		//sem_wait(&sem);
 		//if(i%1000 == 0)
-		fprintf(stderr, "\tThread 1: %d\n", i);
-		//sem_signal(&sem);
+		printf("\tThread 1: %d\n", i);
 	}
-	//sem_signal(&sem);
+	sem_signal(&sem);
 	thread_join(2);
 	printf("Exiting 1\n");
 	thread_exit();
@@ -264,17 +245,13 @@ void f1()
 void f2()
 {
 	printf("f2\n");
-    //sem_wait(&sem);
+    sem_wait(&sem);
 	for (int i = 0; i < 1000000; i++)
 	{
-		//sem_wait(&sem);
 		//if(i%1000 == 0)
-		fprintf(stderr, "\tThread 2: %d\n", i);
-		//sem_signal(&sem);
-		//schedule();
+		printf("\tThread 2: %d\n", i);
 	}
-	//sem_signal(&sem);
-	//thread_join(1);
+	sem_signal(&sem);
 	thread_exit();
 }
 
@@ -284,34 +261,19 @@ int main()
     sem.cnt = 1;
     thread_create(f1);
     puts("Created 1");
-    //schedule();
     thread_create(f2);
     puts("Created 2");
-    //schedule();
     for (int i = 0; i < 1000000; i++)
     {
     	//if(i%1000 == 0)
     	//	printf("\tMain: %d\n", i);
-    	//sem_signal(&sem);
     }
     
     thread_join(2);
     puts("\tjoin 2");
-    //schedule();
     thread_join(1);
     puts("\tjoin 1");
-    
-    printf("\t\tHALOOOO\n");
-    struct thread_list* beg = threads;
-    struct thread_list* end = threads;
-    int len = 0;
-    while(beg != end->next)
-    {
-    	len++;
-    	end = end->next;
-    }
-    printf("\t\t%d\n", len);
-    	
+	
     return 0;
 }
 
