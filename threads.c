@@ -165,6 +165,7 @@ void thread_join(int id)
 void sem_init(struct sem_t* sem, int val)
 {
 	sem->cnt = val;
+	sem->min = sem->max = 0;
 }
 
 void sem_wait(struct sem_t* sem)
@@ -175,6 +176,8 @@ void sem_wait(struct sem_t* sem)
     if (sem->cnt < 0)
     {
         threads->thread.sem = sem;
+        threads->thread.sem_num = sem->max;
+        sem->max++;
         //printf("Sem_wait: %d : schedule\n", threads->thread.id);
         schedule();
     }
@@ -191,17 +194,20 @@ void sem_signal(struct sem_t* sem)
 	timer_off();
 	//printf("Sem_signal: %d : timer_off\n", threads->thread.id);
     sem->cnt++;
-    if (sem->cnt >= 0)
+    if (sem->cnt <= 0)
     {
 	    struct thread_list* tmp_thread = threads;
 	    int curr_id = threads->thread.id;
 	    do
 	    {
-	        if (tmp_thread->thread.sem == sem)
+	        if (tmp_thread->thread.sem == sem && tmp_thread->thread.sem_num == sem->min)
 	        {
 	            tmp_thread->thread.sem = 0;
+	            //printf("Signal: %d %d\n", tmp_thread->thread.id, tmp_thread->thread.sem_num);
+	            sem->min++;
 	            break;
 	        }
+	        //printf("Signal2: %d %d %d\n", tmp_thread->thread.id, tmp_thread->thread.sem_num, sem->min);
 	        tmp_thread = tmp_thread->next;
 	    } while(tmp_thread->thread.id != curr_id);
     }
@@ -215,6 +221,7 @@ void threads_init()
 	threads->thread.id = next_id++;
 	threads->thread.wait = -1;
 	threads->thread.sem = 0;
+	threads->thread.sem_num = 0;
 	threads->next = threads->prev = threads;
 	signal(SIGALRM, schedule);
 	ucontext_t *main_cont = malloc(sizeof(ucontext_t));

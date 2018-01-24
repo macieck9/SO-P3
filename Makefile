@@ -18,3 +18,9 @@ settlers: settlers.o threads.o threads.h Makefile
 	
 settlers-run: settlers
 	./settlers 4 3 100 100
+	
+semtest.o: semtest.c Makefile
+	$(CC) $(F) semtest.c -o semtest.o -c
+	
+semtest: semtest.o threads.o threads.h Makefile
+	$(CC) $(F) semtest.o threads.o -o semtest

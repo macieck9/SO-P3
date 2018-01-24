@@ -10,9 +10,9 @@ Funkcje:
  - void thread\_join(int) - czeka na zakończenie wątku
  - void thread\_sleep(int) - usypia wątek na podaną liczbę mikrosekund
  - void thread\_exit() - kończy wątek
- - void sem\_init(*sem\_t, int) - inicjalizuje semafor
- - void sem\_wait(*sem\_t)  - blokuje semafor
- - void sem\_signal(*sem\_t) - odblokowuje semafor
+ - void sem\_init(sem\_t\*, int) - inicjalizuje semafor
+ - void sem\_wait(sem\_t\*)  - blokuje semafor
+ - void sem\_signal(sem\_t\*) - odblokowuje semafor
 
 Dodatkowo: 
  - funkcja schedule i inne funkcje pomocnicze, odpowiadające za przełączanie wątków

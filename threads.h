@@ -19,7 +19,7 @@ void timer_resume();
 
 struct sem_t
 {
-    int cnt;
+    int cnt, min, max;
 };
 
 struct thread_t
@@ -29,6 +29,7 @@ struct thread_t
     int wait;
     long long sleep;
     struct sem_t* sem;
+    int sem_num;
 };
 
 struct thread_list

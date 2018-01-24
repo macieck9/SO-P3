@@ -2,4 +2,5 @@
 threads
 test1
 settlers
+semtest
 *.o
