@@ -11,8 +11,6 @@
 
 #define interv 100
 
-
-
 void timer_off();
 void timer_on();
 void timer_resume();

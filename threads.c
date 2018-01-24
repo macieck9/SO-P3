@@ -29,14 +29,12 @@ void handle_sleeping()
 	long long delta = (tmp_time.tv_sec - clock_val.tv_sec)*1000000000LL + (tmp_time.tv_nsec - clock_val.tv_nsec);
 	clock_val.tv_sec = tmp_time.tv_sec;
 	clock_val.tv_nsec = tmp_time.tv_nsec;
-	//sum += delta;
 	int curr_id = threads->thread.id;
 	struct thread_list* tmp_thread = threads;
 	do
 	{
 	    if (tmp_thread->thread.sleep)
 	        tmp_thread->thread.sleep = delta > tmp_thread->thread.sleep ? 0 : tmp_thread->thread.sleep - delta;
-	    //printf("%d\n", tmp_thread->thread.sleep);
 	    tmp_thread = tmp_thread->next;
 	} while(tmp_thread->thread.id != curr_id);
 }
@@ -45,7 +43,6 @@ void schedule()
 {
 	timer_off();
 	handle_sleeping();
-	//printf("Schedule: %d : timer off\n", threads->thread.id);
 	struct thread_list* curr = threads;
 	threads = threads->next;
 	while(threads->thread.wait != -1 || threads->thread.sem || threads->thread.sleep)
@@ -53,10 +50,6 @@ void schedule()
 	    threads = threads->next;
 	    handle_sleeping();
 	}
-	//printf("%lu\n", (unsigned long int)(&threads->thread.context));
-	//printf("Schedule: %d : timer on\n", threads->thread.id);
-	//printf("Schedule: %d %d: swapping context\n", threads->thread.id, curr->thread.id);
-	//printf("%ld\n", *(long*)(&threads->thread.context));
 	timer_on();
     swapcontext(&curr->thread.context, &threads->thread.context);	
 }
@@ -78,7 +71,6 @@ void print(char *s)
 int thread_create(void (*func)(), void *args)
 {
 	timer_off();
-	//printf("Thread_create: %d : timer off\n", threads->thread.id);
     ucontext_t *cont = malloc(sizeof(ucontext_t));
     getcontext(cont);
     cont->uc_link = 0;
@@ -97,7 +89,6 @@ int thread_create(void (*func)(), void *args)
     new_thread->prev = threads;
     new_thread->next->prev = new_thread;
     new_thread->prev->next = new_thread;
-    //printf("Thread_create: %d : timer on\n", threads->thread.id);
     timer_on();
     return thread->id;
 }
@@ -105,14 +96,12 @@ int thread_create(void (*func)(), void *args)
 void thread_exit()
 {
 	timer_off();
-	//printf("Thread_exit: %d : timer off\n", threads->thread.id);
 	int curr_id = threads->thread.id;
 	struct thread_list* tmp_thread = threads;
 	do
 	{
 	    if (tmp_thread->thread.wait == curr_id)
 	    {
-	    	//printf("Uwalniam %d\n", tmp_thread->thread.id);
 	        tmp_thread->thread.wait = -1;
 	    }
 	    tmp_thread = tmp_thread->next;
@@ -126,7 +115,6 @@ void thread_exit()
 	    threads = threads->next;
 	    handle_sleeping();
 	}
-	//printf("Thread_exit: %d : setting context\n", threads->thread.id);
 	timer_on();
     setcontext(&threads->thread.context);
 }
@@ -134,30 +122,24 @@ void thread_exit()
 void thread_join(int id)
 {
 	timer_off();
-	//printf("Thread_join: %d : timer off\n", threads->thread.id);
     int curr_id = threads->thread.id;
     if (curr_id == id)
         return;
 	struct thread_list* tmp_thread = threads;
 	int exists = 0;
-	//printf("Istniejace:\n");
 	do
 	{
-		//printf("%d %d, ", tmp_thread->thread.id, tmp_thread->thread.wait);
 	    if (tmp_thread->thread.id == id)
 	        exists = 1;
 	    tmp_thread = tmp_thread->next;
 	} while(tmp_thread->thread.id != curr_id);
-	//printf(" - i to tyle\n");
 	if (exists)
 	{
         threads->thread.wait = id;
-        //printf("Thread_join: %d : schedule\n", threads->thread.id);
         schedule();
     }
     else
     {
-		//printf("Thread_join: %d : timer on\n", threads->thread.id);
 		timer_on();
 	}
 }
@@ -171,28 +153,23 @@ void sem_init(struct sem_t* sem, int val)
 void sem_wait(struct sem_t* sem)
 {
 	timer_off();
-	//printf("Sem_wait: %d : timer off\n", threads->thread.id);
     sem->cnt--;
     if (sem->cnt < 0)
     {
         threads->thread.sem = sem;
         threads->thread.sem_num = sem->max;
         sem->max++;
-        //printf("Sem_wait: %d : schedule\n", threads->thread.id);
         schedule();
     }
     else
     {
-    	//printf("Sem_wait: %d : timer on\n", threads->thread.id);
     	timer_on();
-    	
     }
 }
 
 void sem_signal(struct sem_t* sem)
 {
 	timer_off();
-	//printf("Sem_signal: %d : timer_off\n", threads->thread.id);
     sem->cnt++;
     if (sem->cnt <= 0)
     {
@@ -203,15 +180,12 @@ void sem_signal(struct sem_t* sem)
 	        if (tmp_thread->thread.sem == sem && tmp_thread->thread.sem_num == sem->min)
 	        {
 	            tmp_thread->thread.sem = 0;
-	            //printf("Signal: %d %d\n", tmp_thread->thread.id, tmp_thread->thread.sem_num);
 	            sem->min++;
 	            break;
 	        }
-	        //printf("Signal2: %d %d %d\n", tmp_thread->thread.id, tmp_thread->thread.sem_num, sem->min);
 	        tmp_thread = tmp_thread->next;
 	    } while(tmp_thread->thread.id != curr_id);
     }
-    //printf("Sem_signal: %d : timer_on\n", threads->thread.id);
     timer_resume();
 }
 
@@ -231,7 +205,6 @@ void threads_init()
 	main_cont->uc_stack.ss_size=SIGSTKSZ;
 	main_cont->uc_stack.ss_flags=0;
 	threads->thread.context=*main_cont;
-	//printf("Init: %d : timer on\n", threads->thread.id);
 	clock_gettime(CLOCK_REALTIME, &clock_val);
 	timer_on();
 }

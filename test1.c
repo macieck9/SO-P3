@@ -3,12 +3,12 @@
 void f1(void* arg)
 {
 	print("f1\n");
-	int x = (long)arg;
-	for (int i = 0; i < 100; i++)
+	char* x = arg;
+	for (int i = 0; i < 50; i++)
 	{
 		char s[20];
 		thread_sleep(100000);
-		sprintf(s, "\tThread 1: %d %d\n", i, x);
+		sprintf(s, "%s: %d\n",x, i);
 		print(s);
 	}
 	thread_exit();
@@ -17,11 +17,11 @@ void f1(void* arg)
 void f2()
 {
 	print("f2\n");
-	for (int i = 0; i < 15; i++)
+	for (int i = 0; i < 10; i++)
 	{
 		thread_sleep(1000000);
 		char s[20];
-		sprintf(s, "\tThread 2: %d\n", i);
+		sprintf(s, "Thread 2: %d\n", i);
 		print(s);
 	}
 	thread_exit();
@@ -30,7 +30,8 @@ void f2()
 int main()
 {
     threads_init();
-    thread_create(f1, (void*)56);
+    char* s = "Thread 1";
+    thread_create(f1, (void*)s);
     print("Created 1\n");
     thread_create(f2, NULL);
     print("Created 2\n");
