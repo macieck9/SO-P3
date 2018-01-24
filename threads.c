@@ -162,6 +162,11 @@ void thread_join(int id)
 	}
 }
 
+void sem_init(struct sem_t* sem, int val)
+{
+	sem->cnt = val;
+}
+
 void sem_wait(struct sem_t* sem)
 {
 	timer_off();
@@ -204,7 +209,7 @@ void sem_signal(struct sem_t* sem)
     timer_resume();
 }
 
-void init()
+void threads_init()
 {
 	threads = malloc(sizeof(struct thread_list));
 	threads->thread.id = next_id++;

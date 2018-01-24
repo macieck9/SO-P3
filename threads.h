@@ -27,7 +27,7 @@ struct thread_t
     ucontext_t context;
     int id;
     int wait;
-    int sleep;
+    long long sleep;
     struct sem_t* sem;
 };
 
@@ -42,8 +42,8 @@ struct thread_list* threads;
 
 void schedule();
 void handle_sleeping();
-void init();
 
+void threads_init();
 int thread_create(void (*func)(), void*);
 void thread_exit();
 void thread_join(int);
@@ -51,6 +51,7 @@ void thread_sleep(int);
 
 void print(char*);
 
+void sem_init(struct sem_t*, int);
 void sem_wait(struct sem_t*);
 void sem_signal(struct sem_t*);
 
